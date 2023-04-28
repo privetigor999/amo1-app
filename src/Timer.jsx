@@ -1,22 +1,42 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 function Timer() {
-  const [seconds, setSeconds] = useState(0);
+  const [seconds, setSeconds] = useState(null);
   const [isActive, setIsActive] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const requestRef = useRef();
+  const previousTimeRef = useRef();
 
   useEffect(() => {
-    let interval;
-    if (isActive && seconds > 0) {
-      interval = setInterval(() => {
-        setSeconds((p) => p - 1);
-      }, 1000);
-    } else if (seconds === 0) {
-      clearInterval(interval);
-      setIsActive(false);
+    if (isActive) {
+      previousTimeRef.current = Date.now();
+      requestRef.current = requestAnimationFrame(updateTimer);
+    } else {
+      cancelAnimationFrame(requestRef.current);
     }
-    return () => clearInterval(interval);
-  }, [isActive, seconds]);
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [isActive]);
+
+  useEffect(() => {
+    if (seconds === 0) {
+      setIsActive(false);
+      previousTimeRef.current = null;
+    }
+  }, [seconds]);
+
+  const updateTimer = useCallback(() => {
+    const currentTime = Date.now();
+    const deltaTime = currentTime - previousTimeRef.current;
+
+    if (deltaTime >= 1000) {
+      setSeconds((prevSeconds) => Math.max(0, prevSeconds - 1));
+      previousTimeRef.current = currentTime;
+    }
+
+    if (seconds > 0) {
+      requestRef.current = requestAnimationFrame(updateTimer);
+    }
+  }, [seconds]);
 
   const handleStart = useCallback(() => {
     if (inputValue && !isNaN(inputValue) && parseInt(inputValue) > 0) {
